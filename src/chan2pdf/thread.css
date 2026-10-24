@@ -21,6 +21,23 @@ a { color: #34345c; text-decoration: none; }
 .title-page td:first-child { color: #666; text-align: right; }
 .title-page .url { word-break: break-all; }
 
+/* Collections: title page, contents, one section per thread. */
+.toc { page-break-after: always; }
+.toc h2 { font-size: 16pt; margin: 0 0 6mm; bookmark-level: none; }
+.toc ol { padding-left: 8mm; margin: 0; }
+.toc li { margin-bottom: 3mm; }
+.toc li a { color: #111; }
+.toc li a::after { content: leader(".") target-counter(attr(href), page); color: #555; }
+.toc .toc-meta { font-size: 8.5pt; color: #666; }
+.thread { page-break-before: always; }
+.thread-title { font-size: 15pt; margin: 0 0 1mm; color: #0f0c5d;
+                bookmark-level: 1; string-set: thread-title content(); }
+.thread-meta { font-size: 8.5pt; color: #666; margin-bottom: 3mm; word-break: break-all; }
+.collection .post-header { bookmark-level: 2; }
+.collection .title-page h1 { string-set: none; }
+.quotelink.other-thread { color: #d00; }
+.quotelink.other-thread::after { content: " (" attr(data-thread) ")"; font-size: 7.5pt; color: #999; }
+
 .post { border-top: 0.6pt solid #d9bfb7; padding: 3mm 0 2mm; }
 .post.op { border-top: none; }
 .post-header { page-break-after: avoid; break-inside: avoid; font-size: 9pt;
