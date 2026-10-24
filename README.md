@@ -40,6 +40,32 @@ pip install git+https://github.com/alininium/4chan2pdf
 pip install -e '.[dev]'
 ```
 
+### Gentoo
+
+Install the system libraries, a font and (optionally) ffmpeg:
+
+```sh
+sudo emerge --ask x11-libs/pango media-fonts/dejavu media-video/ffmpeg
+```
+
+Gentoo marks the system Python as externally managed, so a plain `pip install` is refused.
+Install with `pipx` instead, which gives the tool its own virtualenv:
+
+```sh
+sudo emerge --ask dev-python/pipx
+pipx install git+https://github.com/alininium/4chan2pdf
+```
+
+Or use a virtualenv yourself:
+
+```sh
+python -m venv ~/.venvs/4chan2pdf
+~/.venvs/4chan2pdf/bin/pip install git+https://github.com/alininium/4chan2pdf
+~/.venvs/4chan2pdf/bin/4chan2pdf --help
+```
+
+ffmpeg's built-in decoders handle webm and mp4, so no extra USE flags are needed.
+
 ## Usage
 
 ```sh
