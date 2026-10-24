@@ -24,8 +24,8 @@ from bs4 import BeautifulSoup, Tag
 from chan2pdf.model import Attachment, Post, Thread
 
 POST_ID_RE = re.compile(r"^(?:p|reply_|op_)(\d+)$")
-DIMS_RE = re.compile(r"(\d+)\s*x\s*(\d+)")
-SIZE_RE = re.compile(r"([\d.]+\s*[KMG]?i?B)\b", re.I)
+# "(227 KB, 600x929)" after the filename; the filename itself may contain "1920x1080".
+FILEINFO_RE = re.compile(r"\(\s*([\d.]+\s*[KMG]?i?B)\s*(?:,\s*(\d+)\s*x\s*(\d+))?", re.I)
 FOURCHAN_THREAD_RE = re.compile(
     r"^https?://boards\.(?:4chan|4channel)\.org/(\w+)/thread/(\d+)", re.I
 )
@@ -41,6 +41,13 @@ def _classes(tag: Tag) -> list[str]:
 
 def _text(tag: Tag | None) -> str:
     return tag.get_text(" ", strip=True) if tag else ""
+
+
+def _resolve(base_url: str, href: str) -> str:
+    # urljoin would turn //i.4cdn.org/... into file://i.4cdn.org/... for saved pages.
+    if href.startswith("//"):
+        return "https:" + href
+    return urljoin(base_url, href)
 
 
 def _top_level_posts(soup: BeautifulSoup) -> list[Tag]:
@@ -95,19 +102,23 @@ def _parse_attachment(file_div: Tag, base_url: str) -> Attachment | None:
         filename = urlparse(full).path.rsplit("/", 1)[-1]
 
     width = height = None
-    m = DIMS_RE.search(info_text)
-    if m:
-        width, height = int(m.group(1)), int(m.group(2))
-    size = SIZE_RE.search(info_text)
-    spoiler = bool(img is not None and "spoiler" in (img.get("src", "") + " ".join(_classes(img))))
+    size_text = ""
+    matches = FILEINFO_RE.findall(info_text)
+    if matches:
+        size_text, w, h = matches[-1]
+        if w:
+            width, height = int(w), int(h)
+    spoiler = bool(thumb_link is not None and "imgspoiler" in _classes(thumb_link)) or bool(
+        img is not None and "spoiler" in (img.get("src", "") + " ".join(_classes(img)))
+    )
 
     return Attachment(
-        full_url=urljoin(base_url, full) if full else None,
-        thumb_url=urljoin(base_url, thumb) if thumb else None,
+        full_url=_resolve(base_url, full) if full else None,
+        thumb_url=_resolve(base_url, thumb) if thumb else None,
         filename=filename,
         width=width,
         height=height,
-        size_text=size.group(1) if size else "",
+        size_text=size_text,
         spoiler=spoiler,
         md5=img.get("data-md5") if img else None,
     )
@@ -150,9 +161,8 @@ def _parse_post(tag: Tag, base_url: str) -> Post:
             except ValueError:
                 pass
 
-    for file_div in tag.find_all("div", class_=["file", "files"]):
-        if file_div.find_parent("div", class_="file") is not None:
-            continue
+    # 4chan has one div.file per post; vichan wraps several div.file in a div.files.
+    for file_div in tag.find_all("div", class_="file"):
         att = _parse_attachment(file_div, base_url)
         if att:
             post.files.append(att)

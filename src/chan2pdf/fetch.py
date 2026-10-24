@@ -36,7 +36,7 @@ def local_path(url: str) -> Path | None:
     parsed = urlparse(url)
     if parsed.scheme == "file":
         return Path(unquote(parsed.path))
-    if parsed.scheme in ("", None) or (len(parsed.scheme) == 1 and url[1:3] == ":\\"):
+    if not parsed.scheme or len(parsed.scheme) == 1:  # relative path, or a Windows drive "C:"
         return Path(url)
     return None
 
@@ -124,8 +124,9 @@ class Fetcher:
                 if status not in RETRY_STATUS:
                     break
                 retry_after = resp.headers.get("Retry-After", "")
-                if retry_after.isdigit():
-                    time.sleep(min(int(retry_after), 120))
+                if retry_after.isdigit() and attempt < self.retries:
+                    time.sleep(min(int(retry_after), 120))  # the server's wait replaces ours
+                    continue
             if attempt < self.retries:
                 backoff = 2 ** (attempt + 1)
                 log.debug("retrying %s in %ss (%s)", url, backoff, last_error)

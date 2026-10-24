@@ -28,10 +28,19 @@ log = logging.getLogger(__name__)
 Image.MAX_IMAGE_PIXELS = 400_000_000  # /hr/ posts can be huge; still guard against bombs
 
 
+def _write_atomic(path: Path, data: bytes) -> None:
+    # Downloads run in parallel threads; never let one see another's half-written file.
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".part-")
+    with open(fd, "wb") as f:
+        f.write(data)
+    Path(tmp).replace(path)
+
+
 def _store(data: bytes, ext: str, media_dir: Path) -> Path:
     path = media_dir / f"{hashlib.sha256(data).hexdigest()}.{ext}"
     if not path.exists():
-        path.write_bytes(data)
+        _write_atomic(path, data)
     return path
 
 
@@ -42,9 +51,11 @@ def save_original(data: bytes, att: Attachment, url: str, save_dir: Path) -> Pat
     if name and Path(name).stem != Path(stem).stem:
         stem = f"{Path(stem).stem}_{name}"
     path = save_dir / stem
+    if path.exists() and path.read_bytes() != data:
+        # Same name, different file (e.g. two "image.gif" from a saved page): keep both.
+        path = path.with_name(f"{path.stem}_{hashlib.sha256(data).hexdigest()[:8]}{path.suffix}")
     if not path.exists():
-        save_dir.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(data)
+        _write_atomic(path, data)
     return path
 
 

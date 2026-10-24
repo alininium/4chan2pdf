@@ -136,3 +136,59 @@ def test_api_parsing():
     assert att.thumb_url == "https://i.4cdn.org/qst/1471994113475s.jpg"
     assert (att.filename, att.size_text) == ("magical_girl.png", "227 KB")
     assert t.op.replied_by == [501780]
+
+
+def _thread_from(body: str, file_html: str = "", url: str = URL):
+    page = f"""<div class="boardTitle">/qst/ - Quests</div><div class="thread" id="t1">
+    <div class="post op" id="p1">{file_html}<div class="postInfo desktop"></div>
+    <blockquote class="postMessage">{body}</blockquote></div>
+    <div class="post reply" id="p2"><blockquote class="postMessage">hi</blockquote></div></div>"""
+    thread = parse_html(page, url)
+    rewrite_bodies(thread)
+    return thread
+
+
+def test_web_link_with_numeric_fragment_is_not_a_quote():
+    t = _thread_from('<a href="https://example.com/page#2">https://example.com/page#2</a>')
+    assert '<a class="url" href="https://example.com/page#2">' in t.op.body_html
+    assert t.op.replies_to == []
+
+
+def test_non_http_links_dropped():
+    t = _thread_from(
+        '<a href="javascript:alert(1)">click</a> '
+        '<a class="quotelink" href="javascript:/qst/thread/9#p9">&gt;&gt;9</a>'
+    )
+    assert "javascript" not in t.op.body_html
+    assert '<span class="quotelink dead">&gt;&gt;9</span>' in t.op.body_html
+
+
+def test_dimensions_not_taken_from_filename():
+    file_html = """<div class="file"><div class="fileText">File: <a href="i/1.png">wall 1920x1080
+    5MB.png</a> (227 KB, 600x929)</div><a class="fileThumb" href="i/1.png"><img src="t/1s.jpg">
+    </a></div>"""
+    att = _thread_from("x", file_html).op.files[0]
+    assert (att.width, att.height, att.size_text) == (600, 929, "227 KB")
+
+
+def test_protocol_relative_urls_on_saved_page():
+    file_html = """<div class="file"><div class="fileText">File: <a href="//i.4cdn.org/qst/1.png">
+    a.png</a> (1 KB, 10x10)</div><a class="fileThumb imgspoiler" href="//i.4cdn.org/qst/1.png">
+    <img src="//i.4cdn.org/qst/1s.jpg"></a></div>"""
+    att = _thread_from("x", file_html, url="file:///home/me/thread.html").op.files[0]
+    assert att.full_url == "https://i.4cdn.org/qst/1.png"
+    assert att.thumb_url == "https://i.4cdn.org/qst/1s.jpg"
+    assert att.spoiler  # from the a.imgspoiler class
+
+
+def test_vichan_multiple_files_counted_once():
+    file_html = """<div class="files">
+    <div class="file"><p class="fileinfo">File: <a href="/qst/src/1.png">1.png</a>
+    (1 KB, 10x10)</p><a href="/qst/src/1.png"><img src="/qst/thumb/1.png"></a></div>
+    <div class="file"><p class="fileinfo">File: <a href="/qst/src/2.jpg">2.jpg</a>
+    (2 KB, 20x20)</p><a href="/qst/src/2.jpg"><img src="/qst/thumb/2.jpg"></a></div></div>"""
+    files = _thread_from("x", file_html, url="https://example.org/qst/res/1.html").op.files
+    assert [f.full_url for f in files] == [
+        "https://example.org/qst/src/1.png",
+        "https://example.org/qst/src/2.jpg",
+    ]

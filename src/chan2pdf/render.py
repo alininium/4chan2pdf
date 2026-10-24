@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from html import escape
 from importlib.resources import files
 from pathlib import Path
+from urllib.parse import quote
 
 from chan2pdf.model import Attachment, Post, Thread
 
@@ -19,11 +20,20 @@ def _snippet(post: Post, length: int = 50) -> str:
     return text if len(text) <= length else text[: length - 1] + "…"
 
 
+def _saved_rel(path: Path, out_dir: Path | None) -> str | None:
+    """The saved file's path relative to the PDF, or None if there is none (other drive)."""
+    if out_dir is None:
+        return None
+    try:
+        return Path(os.path.relpath(path.resolve(), out_dir.resolve())).as_posix()
+    except ValueError:
+        return None
+
+
 def _saved_href(path: Path, out_dir: Path | None) -> str:
     """Link to a saved file relative to the PDF, so the PDF and its folder can move together."""
-    if out_dir is None:
-        return path.resolve().as_uri()
-    return Path(os.path.relpath(path.resolve(), out_dir.resolve())).as_posix()
+    rel = _saved_rel(path, out_dir)
+    return quote(rel) if rel is not None else path.resolve().as_uri()
 
 
 def _attachment_html(att: Attachment, out_dir: Path | None = None) -> str:
@@ -33,11 +43,12 @@ def _attachment_html(att: Attachment, out_dir: Path | None = None) -> str:
     label = '<div class="spoiler-label">Spoiler</div>' if att.spoiler else ""
     saved = ""
     if att.saved_path is not None:
-        rel = _saved_href(att.saved_path, out_dir)
+        href = _saved_href(att.saved_path, out_dir)
+        shown = _saved_rel(att.saved_path, out_dir) or str(att.saved_path.resolve())
         what = "video" if att.kind == "video" else "animation"
         saved = (
-            f'<div class="saved">▶ Play {what}: <a href="{escape(rel, quote=True)}">'
-            f"{escape(rel)}</a></div>"
+            f'<div class="saved">▶ Play {what}: <a href="{escape(href, quote=True)}">'
+            f"{escape(shown)}</a></div>"
         )
     if att.local_path is None:
         return (

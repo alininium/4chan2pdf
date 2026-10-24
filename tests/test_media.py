@@ -74,3 +74,23 @@ def test_records_failure(tmp_path):
     with Fetcher(None, delay=0) as f:
         fetch_attachment(att, f, tmp_path)
     assert att.source is None and att.local_path is None and "a.png" in att.error
+
+
+def test_same_name_different_files_both_saved(tmp_path):
+    from chan2pdf.media import save_original
+
+    att = Attachment(full_url=None, thumb_url=None, filename="image.gif")
+    a = save_original(b"one", att, "https://x/1/image.gif", tmp_path)
+    again = save_original(b"one", att, "https://x/1/image.gif", tmp_path)
+    b = save_original(b"two", att, "https://x/2/image.gif", tmp_path)
+    assert a == again and a != b
+    assert (a.read_bytes(), b.read_bytes()) == (b"one", b"two")
+    assert not list(tmp_path.glob(".part-*"))
+
+
+def test_saved_link_is_relative_and_escaped(tmp_path):
+    from chan2pdf.render import _saved_href
+
+    media = tmp_path / "my #media"
+    assert _saved_href(media / "a b.webm", tmp_path) == "my%20%23media/a%20b.webm"
+    assert _saved_href(media / "a.webm", None).startswith("file://")

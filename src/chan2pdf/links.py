@@ -35,8 +35,9 @@ class _Ctx:
     def external(self, href: str) -> str:
         if href.startswith("//"):
             return "https:" + href
-        if urlparse(href).scheme:
-            return href
+        scheme = urlparse(href).scheme
+        if scheme:
+            return href if scheme in ("http", "https") else ""
         # Root-relative board links (/qst/thread/123) only make sense on the board itself.
         # From a saved file or a static mirror, point them at the original site instead.
         if href.startswith("/") and not HREF_THREAD_RE.search(urlparse(self.base).path):
@@ -72,7 +73,7 @@ def _quote_tag(soup: BeautifulSoup, ctx: _Ctx, text: str, href: str, refs: list[
         refs.append(num)
         return _new(soup, "a", f">>{num}", href=f"#p{num}", **{"class": "quotelink"})
     tm = HREF_THREAD_RE.search(href)
-    if href and tm and int(tm.group(1)) != ctx.thread.id:
+    if href and tm and int(tm.group(1)) != ctx.thread.id and ctx.external(href):
         label = text if text.startswith(">>") else f">>{num or tm.group(1)}"
         return _new(soup, "a", label, href=ctx.external(href), **{"class": "quotelink external"})
     label = f">>{num}" if num is not None else text
@@ -122,7 +123,9 @@ def clean_body(body_html: str, ctx: _Ctx) -> tuple[str, list[int]]:
         text = tag.get_text()
         if tag.name == "a":
             href = tag.get("href", "")
-            if "quotelink" in classes or text.startswith(">>") or HREF_POST_RE.search(href):
+            # A bare "#p123" is a quote too, but a web link that ends in "#3" is not.
+            is_quote = "quotelink" in classes or text.startswith(">>") or href.startswith("#")
+            if is_quote:
                 tag.replace_with(_quote_tag(soup, ctx, text.strip(), href, refs))
             elif href.startswith(("http://", "https://", "//")):
                 tag.attrs = {"href": ctx.external(href), "class": "url"}
