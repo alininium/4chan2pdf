@@ -1,0 +1,57 @@
+@page {
+  size: A4;
+  margin: 16mm 14mm 18mm 14mm;
+  @bottom-center { content: counter(page) " / " counter(pages); font-size: 8pt; color: #888; }
+  @top-right { content: string(thread-title); font-size: 8pt; color: #888; }
+}
+
+/* Only list fonts by exact name: fontconfig fuzzy-matches missing families, and a missing
+   "Noto Sans" can resolve to Noto Color Emoji, which then draws every digit as an emoji. */
+html { font-family: "DejaVu Sans", "Liberation Sans", "Noto Sans CJK JP", "IPAGothic", sans-serif;
+       font-size: 10pt; line-height: 1.4; color: #111; }
+body { margin: 0; }
+a { color: #34345c; text-decoration: none; }
+
+.title-page { page-break-after: always; padding-top: 60mm; text-align: center; }
+.title-page h1 { font-size: 22pt; margin: 0 0 4mm; string-set: thread-title content();
+                 bookmark-level: none; }
+.title-page .board { font-size: 13pt; color: #789922; margin-bottom: 12mm; }
+.title-page table { margin: 0 auto; border-collapse: collapse; text-align: left; font-size: 9.5pt; }
+.title-page td { padding: 1mm 4mm; vertical-align: top; }
+.title-page td:first-child { color: #666; text-align: right; }
+.title-page .url { word-break: break-all; }
+
+.post { border-top: 0.6pt solid #d9bfb7; padding: 3mm 0 2mm; }
+.post.op { border-top: none; }
+.post-header { page-break-after: avoid; break-inside: avoid; font-size: 9pt;
+               bookmark-level: 1; bookmark-label: attr(data-bookmark); }
+.post-header .subject { color: #0f0c5d; font-weight: bold; }
+.post-header .name { color: #117743; font-weight: bold; }
+.post-header .trip { color: #117743; }
+.post-header .uid { color: #555; }
+.post-header .num { color: #800; }
+.post-header .backlinks { display: block; font-size: 8.5pt; color: #666; }
+.post.op .post-header { font-size: 10pt; }
+
+.file { margin: 2mm 0; break-inside: avoid; }
+.file .img-wrap { position: relative; display: inline-block; }
+.file img { display: block; max-width: 100%; max-height: 200mm; width: auto; height: auto;
+            image-rendering: auto; }
+.file .badge { position: absolute; left: 2mm; top: 2mm; background: rgba(0,0,0,.7); color: #fff;
+               font-size: 8pt; padding: 0.5mm 1.5mm; border-radius: 1mm; }
+.file .caption { font-size: 8pt; color: #555; margin-top: 0.8mm; word-break: break-all; }
+.file .caption .warn { color: #a00; }
+.file.missing .placeholder { border: 0.8pt dashed #a00; padding: 4mm; color: #a00; font-size: 8.5pt;
+                             word-break: break-all; }
+
+.body { margin: 1.5mm 0 0; overflow-wrap: break-word; }
+.greentext { color: #789922; }
+.spoiler { background: #e2e2e2; color: #111; }
+pre.code { font-family: "DejaVu Sans Mono", monospace; font-size: 8.5pt; background: #f4f4f4;
+           padding: 2mm; white-space: pre-wrap; }
+.quotelink { color: #d00; }
+.quotelink.external { color: #a050a0; }
+.quotelink.external::after { content: " (external)"; font-size: 7.5pt; color: #999; }
+.quotelink.dead { color: #999; text-decoration: line-through; }
+.quotelink.dead::after { content: " (dead)"; font-size: 7.5pt; text-decoration: none; }
+.url { color: #2a5db0; word-break: break-all; }
