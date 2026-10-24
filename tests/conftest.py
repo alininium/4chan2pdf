@@ -41,3 +41,13 @@ def saved_thread(tmp_path: Path) -> Path:
     ]:
         _gradient(size).save(thumbs / f"{stem}s.jpg")
     return page
+
+
+@pytest.fixture()
+def second_thread(saved_thread: Path) -> Path:
+    """A follow-up thread saved in the same folder, quoting posts of the first one."""
+    page = saved_thread.parent / "thread2.html"
+    shutil.copy(FIXTURES / "thread_513200.html", page)
+    _gradient((900, 600)).save(saved_thread.parent / "images" / "1472330000000.jpg", quality=92)
+    _gradient((250, 166)).save(saved_thread.parent / "thumbs" / "1472330000000s.jpg")
+    return page

@@ -90,14 +90,14 @@ def test_thumbs_only(saved_thread, tmp_path):
 
 def test_videos_and_animations_saved_and_linked_relatively(saved_thread, tmp_path):
     reader = _build(saved_thread, tmp_path)
-    media = tmp_path / "out_media"
+    media = tmp_path / "out_files" / "media"
     gif = media / "1471996986000_dance.gif"
     webm = media / "1472165500000_transformation_sequence.webm"
     assert gif.read_bytes() == (saved_thread.parent / "images/1471996986000.gif").read_bytes()
     assert webm.read_bytes() == (saved_thread.parent / "images/1472165500000.webm").read_bytes()
     assert sorted(p.name for p in media.iterdir()) == [gif.name, webm.name]  # stills not saved
     uris = _uri_links(reader)
-    assert {f"out_media/{gif.name}", f"out_media/{webm.name}"} <= uris
+    assert {f"out_files/media/{gif.name}", f"out_files/media/{webm.name}"} <= uris
     text = "".join(page.extract_text() for page in reader.pages)
     assert "Play animation" in text and "Play video" in text
 
@@ -109,8 +109,8 @@ def test_video_first_frame_embedded(saved_thread, tmp_path):
 
 def test_no_save_media(saved_thread, tmp_path):
     reader = _build(saved_thread, tmp_path, "--no-save-media")
-    assert not (tmp_path / "out_media").exists()
-    assert not any(u.startswith("out_media/") for u in _uri_links(reader))
+    assert not (tmp_path / "out_files" / "media").exists()
+    assert not any("media/" in u for u in _uri_links(reader))
 
 
 def test_spoiler_label_before_image(saved_thread, tmp_path):
@@ -118,3 +118,13 @@ def test_spoiler_label_before_image(saved_thread, tmp_path):
     text = "".join(page.extract_text() for page in reader.pages)
     assert text.count("SPOILER") == 1
     assert text.index("SPOILER") < text.index("secret_art.png")
+
+
+@pytest.mark.parametrize("style", ["yotsuba", "yotsuba-b"])
+def test_yotsuba_styles(saved_thread, tmp_path, style):
+    from chan2pdf.render import STYLES, _stylesheets
+
+    sheets = "".join(_stylesheets(style))
+    assert STYLES[style]["reply-bg"] in sheets and ".post.reply::before" in sheets
+    reader = _build(saved_thread, tmp_path, "--style", style)
+    assert len(_outline_titles(reader)) == 9  # same structure as the plain style

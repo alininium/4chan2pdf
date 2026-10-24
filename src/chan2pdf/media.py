@@ -185,8 +185,19 @@ def fetch_all(
     workers: int = 4,
     progress: Callable[[Attachment], None] | None = None,
     save_dir: Path | None = None,
-) -> None:
-    atts = [a for p in thread.posts for a in p.files]
+    retry_failed: bool = True,
+) -> int:
+    """Fetch every attachment not prepared yet; returns how many were attempted.
+
+    Attachments restored from a saved thread are skipped when their file is already
+    there, and also when they failed before unless `retry_failed` is set.
+    """
+    atts = [
+        a
+        for p in thread.posts
+        for a in p.files
+        if a.local_path is None and (retry_failed or a.error is None)
+    ]
 
     def work(att: Attachment) -> Attachment:
         fetch_attachment(att, fetcher, media_dir, max_px, full_images, save_dir)
@@ -196,3 +207,4 @@ def fetch_all(
 
     with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
         list(pool.map(work, atts))
+    return len(atts)

@@ -1,0 +1,38 @@
+/* 4chan's classic look, on top of thread.css. The colours come from the variables that
+   render.STYLES sets for "yotsuba" (red boards) or "yotsuba-b" (blue, work-safe boards). */
+
+@page { background: var(--bg); }
+html { background: var(--bg); color: var(--text);
+       font-family: "Liberation Sans", "DejaVu Sans", "Noto Sans CJK JP", "IPAGothic", sans-serif;
+       font-size: 10pt; }
+a, .url { color: var(--link); }
+
+.title-page h1, .thread-title { color: var(--title); font-family: "DejaVu Sans", sans-serif;
+                                letter-spacing: -0.5pt; }
+.title-page .board { color: var(--title); }
+
+/* Replies are boxes indented behind ">>", the OP sits on the page itself. */
+.post { border-top: none; padding: 1mm 0; }
+.post.op { padding-bottom: 3mm; border-bottom: 0.6pt solid var(--reply-border); margin-bottom: 2mm; }
+.post.reply { position: relative; margin: 0 0 1.2mm 6mm; padding: 1.5mm 2.5mm;
+              background: var(--reply-bg); border: 0.75pt solid var(--reply-border);
+              border-left: none; border-top: none; display: table; max-width: 100%;
+              box-sizing: border-box; }
+.post.reply::before { content: ">>"; position: absolute; left: -5.5mm; top: 1.5mm;
+                      color: var(--reply-border); font-size: 9pt; }
+
+.post-header .subject { color: var(--subject); }
+.post-header .name { color: #117743; }
+.post-header .trip { color: #117743; font-weight: normal; }
+.post-header .uid { color: var(--text); }
+.post-header .date, .post-header .num { color: var(--text); }
+.post-header .backlinks { color: var(--text); }
+
+.quotelink, .quotelink.other-thread { color: var(--quote); text-decoration: underline; }
+.quotelink.external { color: var(--quote); }
+.greentext { color: #789922; }
+.spoiler { background: #000; color: #fff; }
+.file .caption { color: var(--text); }
+.file .caption a { color: var(--link); }
+.toc li a { color: var(--link); }
+.toc .toc-meta, .thread-meta { color: var(--text); }

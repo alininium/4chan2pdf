@@ -12,9 +12,9 @@ Save an imageboard thread as a single PDF that keeps:
   that are not in the thread are struck through and marked *(dead)*.
 
 Videos (webm/mp4) and animated GIFs show their first frame in the PDF. The original files
-are saved in a folder next to the PDF (`quest.pdf` → `quest_media/`), and clicking the
-picture or the "▶ Play video / animation" line opens them. These links are relative, so you
-can move or copy the PDF as long as its `_media` folder goes with it.
+are saved in the work folder next to the PDF (`quest.pdf` → `quest_files/media/`), and
+clicking the picture or the "▶ Play video / animation" line opens them. These links are
+relative, so you can move or copy the PDF as long as its `_files` folder goes with it.
 
 Spoilered images are downloaded unspoilered, with a **SPOILER** label above them.
 
@@ -76,11 +76,16 @@ ffmpeg's built-in decoders handle webm and mp4, so no extra USE flags are needed
 
 | Option | Meaning |
 | --- | --- |
-| `-o FILE` | output file (default `<board>_<thread>_<subject>.pdf`) |
+| `-o FILE` | output file (default: the `-i` file's name, or `<board>_<thread>_<subject>.pdf` for one thread) |
+| `-i FILE` | read thread links from a file, one per line |
+| `--title TEXT` | title of a multi-thread PDF (default: the file name) |
+| `--style NAME` | `plain`, `yotsuba` or `yotsuba-b` |
+| `--refresh` | download thread pages again for new posts, and retry failed images |
+| `--workdir DIR` | where downloaded threads are kept between runs (default `<output>_files/`) |
 | `--max-image-px N` | downscale images whose longest side is over N px (default: never) |
 | `--thumbs-only` | use thumbnails, for a small PDF |
 | `--no-title-page` | leave out the title page |
-| `--media-dir DIR` | where to save videos and animated GIFs (default `<output>_media/`) |
+| `--media-dir DIR` | where to save videos and animated GIFs (default `<output>_files/media/`) |
 | `--no-save-media` | don't save them; the picture links to the original URL instead |
 | `--delay S` | seconds between HTTP requests (default 1) |
 | `--workers N` | parallel image downloads (default 4; they still respect `--delay`) |
@@ -91,6 +96,59 @@ ffmpeg's built-in decoders handle webm and mp4, so no extra USE flags are needed
 A summary is printed at the end. It gives the number of posts, how many images came out
 full-size, thumbnail-only or failed, and the number of links between posts.
 
+## Several threads in one PDF
+
+Put the links in a file, one per line. Blank lines and lines starting with `#` are ignored:
+
+```text
+# Magical Girl For Hire Quest
+https://suptg.thisisnotatrueending.com/qstarchive/2016/501742/
+https://suptg.thisisnotatrueending.com/qstarchive/2016/513200/
+```
+
+```sh
+4chan2pdf -i quest.txt                    # writes quest.pdf
+4chan2pdf URL1 URL2 URL3 -o quest.pdf     # links on the command line work too
+```
+
+The PDF starts with a title page and a table of contents with page numbers, followed by one
+section per thread. In the PDF outline each thread is a bookmark, with its posts nested
+under it. When a post quotes a post in another thread of the same PDF, such as a quest's
+link to its previous thread, the quote jumps there.
+
+### Adding more links later
+
+Everything downloaded is kept in a work folder next to the PDF (`quest_files/`):
+
+```
+quest_files/
+  index.json     which link is stored in which file
+  threads/       each parsed thread, with its posts and image details
+  images/        the images embedded in the PDF
+  media/         saved videos and animated GIFs, which the PDF links to
+```
+
+Add links to `quest.txt` and run the same command again. Threads already in the work folder
+are taken from it, so only the new links are downloaded. A thread that fails to download is
+reported and skipped; the PDF is still made from the rest, and the exit code is 1.
+
+- `--refresh` downloads the thread pages again to pick up new posts in threads that are
+  still live, and retries images that failed. Images already downloaded are reused.
+- Changing `--max-image-px` or `--thumbs-only` makes the next run prepare the saved threads'
+  images again.
+- Keep the PDF and its `_files` folder together: the video and GIF links point into it.
+- `--workdir DIR` puts the work folder somewhere else.
+
+## Styles
+
+`--style` changes how the pages look:
+
+| Style | Look |
+| --- | --- |
+| `plain` (default) | white pages, posts separated by thin lines |
+| `yotsuba` | 4chan's beige and maroon theme, with replies in boxes |
+| `yotsuba-b` | 4chan's blue theme, used on work-safe boards |
+
 ## How it works
 
 ```
@@ -98,7 +156,8 @@ fetch.py   HTTP with delay, retries (429/5xx, Retry-After) and a disk cache; loc
 parse.py   4chan HTML / JSON API  ->  Thread(posts=[Post(files=[Attachment])])
 links.py   sanitize post markup, rewrite quotes to #p<id>, compute backlinks
 media.py   download full image (fallback: thumbnail), keep JPEG/PNG as-is, convert the rest
-render.py  HTML + thread.css  ->  PDF with WeasyPrint
+store.py   keep parsed threads and their images in the work folder between runs
+render.py  HTML + thread.css (+ yotsuba.css)  ->  PDF with WeasyPrint; table of contents
 ```
 
 Notes:
