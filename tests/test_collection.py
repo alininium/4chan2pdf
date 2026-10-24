@@ -156,3 +156,15 @@ def test_refresh_of_vanished_thread_keeps_saved_copy(saved_thread, second_thread
     reader = PdfReader(tmp_path / "quest.pdf")
     assert _outline(reader)[2] == "2. Magical Girl For Hire Quest #2"
     assert "Contents" in reader.pages[0].extract_text()  # no title page in front
+
+
+def test_relative_paths_in_links_file(saved_thread, tmp_path, monkeypatch):
+    links = tmp_path / "quest.txt"
+    links.write_text(f"{saved_thread.name}\nhttps://boards.4chan.org/qst/thread/1\n")
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+
+    from chan2pdf.cli import read_links
+
+    assert read_links(links) == [str(saved_thread), "https://boards.4chan.org/qst/thread/1"]

@@ -69,12 +69,19 @@ def normalize_url(url: str) -> str:
 
 
 def read_links(path: Path) -> list[str]:
-    """One link per line; blank lines and lines starting with # are ignored."""
+    """One link per line; blank lines and lines starting with # are ignored.
+
+    Relative file paths are relative to the links file, not the current directory.
+    """
     links = []
     for line in path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
-        if line and not line.startswith("#"):
-            links.append(line)
+        if not line or line.startswith("#"):
+            continue
+        local = local_path(line)
+        if local is not None and not local.is_absolute():
+            line = str(path.parent / local)
+        links.append(line)
     return links
 
 
