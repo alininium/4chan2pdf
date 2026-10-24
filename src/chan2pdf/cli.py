@@ -93,6 +93,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--no-title-page", action="store_true", help="omit the title page")
     p.add_argument(
+        "--media-dir",
+        type=Path,
+        help="where videos and animated GIFs are saved for the PDF to link to "
+        "(default: <output name>_media next to the PDF)",
+    )
+    p.add_argument(
+        "--no-save-media",
+        action="store_true",
+        help="do not save videos and animations; link to the original URLs",
+    )
+    p.add_argument(
         "--delay",
         type=float,
         default=1.0,
@@ -133,6 +144,10 @@ def main(argv: list[str] | None = None) -> int:
                 done += 1
                 print(f"\rimages {done}/{n_files}", end="", file=sys.stderr, flush=True)
 
+            out = args.output or default_output(thread)
+            save_dir = None
+            if not args.no_save_media:
+                save_dir = args.media_dir or out.parent / f"{out.stem}_media"
             with tempfile.TemporaryDirectory(prefix="4chan2pdf-") as media_dir:
                 fetch_all(
                     thread,
@@ -142,10 +157,10 @@ def main(argv: list[str] | None = None) -> int:
                     not args.thumbs_only,
                     args.workers,
                     progress,
+                    save_dir,
                 )
                 if n_files:
                     print(file=sys.stderr)
-                out = args.output or default_output(thread)
                 log.info("rendering %s", out)
                 write_pdf(thread, out, title_page=not args.no_title_page)
     except FetchError as e:
@@ -167,6 +182,9 @@ def main(argv: list[str] | None = None) -> int:
         f"{sum(a.source == 'full' for a in atts)} full-size, "
         f"{sum(a.source == 'thumb' for a in atts)} thumbnail only, "
         f"{sum(a.source is None for a in atts)} failed\n"
+        f"  videos/animations saved: {sum(a.saved_path is not None for a in atts)}"
+        + (f" in {save_dir}" if save_dir and any(a.saved_path for a in atts) else "")
+        + "\n"
         f"  links between posts: {internal}",
         file=sys.stderr,
     )

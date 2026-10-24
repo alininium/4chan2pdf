@@ -3,6 +3,7 @@
 Static JPEG and PNG files are embedded byte-for-byte, so nothing is lost.
 Other formats are converted losslessly to PNG; animations keep their first
 frame and videos get a still frame from ffmpeg (or the board's thumbnail).
+The original video or animation is saved next to the PDF so it can link to it.
 """
 
 from __future__ import annotations
@@ -10,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import io
 import logging
+import re
 import shutil
 import subprocess
 import tempfile
@@ -29,6 +31,19 @@ Image.MAX_IMAGE_PIXELS = 400_000_000  # /hr/ posts can be huge; still guard agai
 def _store(data: bytes, ext: str, media_dir: Path) -> Path:
     path = media_dir / f"{hashlib.sha256(data).hexdigest()}.{ext}"
     if not path.exists():
+        path.write_bytes(data)
+    return path
+
+
+def save_original(data: bytes, att: Attachment, url: str, save_dir: Path) -> Path:
+    """Write a video/animation as `<server name>_<original name>` and return its path."""
+    stem = Path(url.split("?")[0]).name
+    name = re.sub(r"[^\w.\-]+", "_", att.filename).strip("._")
+    if name and Path(name).stem != Path(stem).stem:
+        stem = f"{Path(stem).stem}_{name}"
+    path = save_dir / stem
+    if not path.exists():
+        save_dir.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
     return path
 
@@ -101,6 +116,7 @@ def fetch_attachment(
     media_dir: Path,
     max_px: int | None = None,
     full_images: bool = True,
+    save_dir: Path | None = None,
 ) -> Attachment:
     # Full file first; the thumbnail is a last resort. A spoiler's "thumbnail" is only the
     # board's placeholder, so spoilered files use the full image even with --thumbs-only.
@@ -119,8 +135,11 @@ def fetch_attachment(
             continue
         try:
             if source == "full" and att.is_video:
+                if save_dir:
+                    att.saved_path = save_original(data, att, url, save_dir)
                 frame = _video_frame(data, Path(url.split("?")[0]).suffix or ".webm")
                 if frame is None:
+                    # The video itself is saved; show the board's thumbnail instead.
                     errors.append(f"{url}: no frame extracted")
                     continue
                 att.local_path, _, w, h = prepare_image(frame, media_dir, max_px)
@@ -129,6 +148,8 @@ def fetch_attachment(
                 att.local_path, att.kind, w, h = prepare_image(data, media_dir, max_px)
                 if source == "thumb" and att.is_video:
                     att.kind = "video"
+                elif source == "full" and att.kind == "animated" and save_dir:
+                    att.saved_path = save_original(data, att, url, save_dir)
         except (OSError, Image.DecompressionBombError, SyntaxError, ValueError) as e:
             errors.append(f"{url}: not a readable image ({e})")
             continue
@@ -152,11 +173,12 @@ def fetch_all(
     full_images: bool = True,
     workers: int = 4,
     progress: Callable[[Attachment], None] | None = None,
+    save_dir: Path | None = None,
 ) -> None:
     atts = [a for p in thread.posts for a in p.files]
 
     def work(att: Attachment) -> Attachment:
-        fetch_attachment(att, fetcher, media_dir, max_px, full_images)
+        fetch_attachment(att, fetcher, media_dir, max_px, full_images, save_dir)
         if progress:
             progress(att)
         return att

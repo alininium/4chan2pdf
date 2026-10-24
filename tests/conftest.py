@@ -29,6 +29,7 @@ def saved_thread(tmp_path: Path) -> Path:
     _gradient((600, 929), "RGBA").save(images / "1471994113475.png")
     _gradient((1200, 800)).save(images / "1471996600111.jpg", quality=92)
     _gradient((400, 300)).save(images / "1472165400000.png")
+    shutil.copy(FIXTURES / "1472165500000.webm", images / "1472165500000.webm")
     frames = [_gradient((320, 240)), Image.new("RGB", (320, 240), "red")]
     frames[0].save(images / "1471996986000.gif", save_all=True, append_images=frames[1:])
     for stem, size in [
@@ -36,6 +37,7 @@ def saved_thread(tmp_path: Path) -> Path:
         ("1471996600111", (250, 166)),
         ("1471996986000", (250, 187)),
         ("1472165274999", (250, 187)),
+        ("1472165500000", (250, 187)),
     ]:
         _gradient(size).save(thumbs / f"{stem}s.jpg")
     return page

@@ -22,6 +22,7 @@ class Attachment:
     source: str | None = None  # "full", "thumb" or None when nothing could be fetched
     kind: str = "image"  # "image", "animated" or "video"
     embedded_size: tuple[int, int] | None = None  # pixels actually put in the PDF
+    saved_path: Path | None = None  # original video/animation saved next to the PDF
     error: str | None = None
 
     @property

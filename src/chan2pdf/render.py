@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 from html import escape
 from importlib.resources import files
@@ -18,14 +19,31 @@ def _snippet(post: Post, length: int = 50) -> str:
     return text if len(text) <= length else text[: length - 1] + "…"
 
 
-def _attachment_html(att: Attachment) -> str:
+def _saved_href(path: Path, out_dir: Path | None) -> str:
+    """Link to a saved file relative to the PDF, so the PDF and its folder can move together."""
+    if out_dir is None:
+        return path.resolve().as_uri()
+    return Path(os.path.relpath(path.resolve(), out_dir.resolve())).as_posix()
+
+
+def _attachment_html(att: Attachment, out_dir: Path | None = None) -> str:
     link = escape(att.full_url or att.thumb_url or "", quote=True)
     name = escape(att.filename or "file")
     details = [d for d in (att.size_text, f"{att.width}x{att.height}" if att.width else "") if d]
+    label = '<div class="spoiler-label">Spoiler</div>' if att.spoiler else ""
+    saved = ""
+    if att.saved_path is not None:
+        rel = _saved_href(att.saved_path, out_dir)
+        what = "video" if att.kind == "video" else "animation"
+        saved = (
+            f'<div class="saved">▶ Play {what}: <a href="{escape(rel, quote=True)}">'
+            f"{escape(rel)}</a></div>"
+        )
     if att.local_path is None:
         return (
-            f'<div class="file missing"><div class="placeholder">Image unavailable: {name}<br>'
-            f'<a href="{link}">{link}</a><br>{escape(att.error or "")}</div></div>'
+            f'<div class="file missing">{label}<div class="placeholder">Image unavailable: '
+            f'{name}<br><a href="{link}">{link}</a><br>{escape(att.error or "")}</div>'
+            f"{saved}</div>"
         )
     badge = ""
     if att.kind == "video":
@@ -43,13 +61,18 @@ def _attachment_html(att: Attachment) -> str:
     if notes:
         caption += " · " + " · ".join(notes)
     src = escape(att.local_path.resolve().as_uri(), quote=True)
+    # Clicking a video or animation opens the saved file; still images open the original URL.
+    target = link
+    if att.saved_path is not None:
+        target = escape(_saved_href(att.saved_path, out_dir), quote=True)
     return (
-        f'<div class="file"><a class="img-wrap" href="{link}"><img src="{src}" alt="{name}">'
-        f'{badge}</a><div class="caption">{caption}</div></div>'
+        f'<div class="file">{label}<a class="img-wrap" href="{target}">'
+        f'<img src="{src}" alt="{name}">{badge}</a>'
+        f'<div class="caption">{caption}</div>{saved}</div>'
     )
 
 
-def post_html(post: Post) -> str:
+def post_html(post: Post, out_dir: Path | None = None) -> str:
     bookmark = f"No.{post.id}" + (f" – {_snippet(post)}" if post.body_html else "")
     if post.is_op and post.subject:
         bookmark = f"OP: {post.subject}"
@@ -76,7 +99,7 @@ def post_html(post: Post) -> str:
         )
         header += f'<span class="backlinks">Replies: {links}</span>'
 
-    files_html = "".join(_attachment_html(a) for a in post.files)
+    files_html = "".join(_attachment_html(a, out_dir) for a in post.files)
     classes = "post op" if post.is_op else "post reply"
     return (
         f'<div class="{classes}" id="p{post.id}">'
@@ -113,7 +136,7 @@ def _title_page(thread: Thread) -> str:
     )
 
 
-def thread_html(thread: Thread, title_page: bool = True) -> str:
+def thread_html(thread: Thread, title_page: bool = True, out_dir: Path | None = None) -> str:
     title = thread.subject or f"/{thread.board}/ {thread.id}"
     head = (
         f'<!doctype html><html><head><meta charset="utf-8"><title>{escape(title)}</title>'
@@ -121,7 +144,7 @@ def thread_html(thread: Thread, title_page: bool = True) -> str:
         f'<meta name="generator" content="4chan2pdf"></head><body>'
     )
     body = _title_page(thread) if title_page else ""
-    body += "".join(post_html(p) for p in thread.posts)
+    body += "".join(post_html(p, out_dir) for p in thread.posts)
     return head + body + "</body></html>"
 
 
@@ -129,6 +152,7 @@ def write_pdf(thread: Thread, out: Path, title_page: bool = True) -> None:
     from weasyprint import CSS, HTML
 
     css = CSS(string=files("chan2pdf").joinpath("thread.css").read_text(encoding="utf-8"))
-    document = HTML(string=thread_html(thread, title_page), base_url=str(out.parent.resolve()))
+    # No base URL: links to saved videos stay relative to the PDF. Images use absolute file URIs.
+    document = HTML(string=thread_html(thread, title_page, out.parent), base_url=None)
     # No dpi / jpeg_quality options: images are embedded at their native resolution.
     document.write_pdf(out, stylesheets=[css], uncompressed_pdf=False)

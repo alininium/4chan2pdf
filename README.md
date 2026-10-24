@@ -11,6 +11,13 @@ Save an imageboard thread as a single PDF that keeps:
   per post. Quotes to other threads stay as web links marked *(external)*. Quotes to posts
   that are not in the thread are struck through and marked *(dead)*.
 
+Videos (webm/mp4) and animated GIFs show their first frame in the PDF. The original files
+are saved in a folder next to the PDF (`quest.pdf` → `quest_media/`), and clicking the
+picture or the "▶ Play video / animation" line opens them. These links are relative, so you
+can move or copy the PDF as long as its `_media` folder goes with it.
+
+Spoilered images are downloaded unspoilered, with a **SPOILER** label above them.
+
 It works with:
 
 | Source | How |
@@ -47,6 +54,8 @@ pip install -e '.[dev]'
 | `--max-image-px N` | downscale images whose longest side is over N px (default: never) |
 | `--thumbs-only` | use thumbnails, for a small PDF |
 | `--no-title-page` | leave out the title page |
+| `--media-dir DIR` | where to save videos and animated GIFs (default `<output>_media/`) |
+| `--no-save-media` | don't save them; the picture links to the original URL instead |
 | `--delay S` | seconds between HTTP requests (default 1) |
 | `--workers N` | parallel image downloads (default 4; they still respect `--delay`) |
 | `--cache-dir DIR` / `--no-cache` | download cache (default `~/.cache/4chan2pdf`), so re-runs download nothing again |
@@ -70,9 +79,12 @@ Notes:
 
 - Images are shown no larger than the page, but the full pixel data stays in the PDF, so you
   can zoom in. Identical files are stored once.
-- Animated GIFs show their first frame with an "animated" badge. Videos show a frame with a
-  "▶ video" badge, and every image links to its original URL.
-- Spoilered images are downloaded unspoilered.
+- Animated GIFs get an "animated" badge and videos a "▶ video" badge. Clicking them opens the
+  saved file; clicking a still image opens its original URL. Without `ffmpeg`, a video shows
+  the board's thumbnail, but the video is still saved and linked.
+- Videos and GIFs are only saved when the full file is downloaded, so not with `--thumbs-only`.
+- Viewers handle relative file links differently: Okular, Evince, Firefox and Acrobat open them
+  (Acrobat asks first), while some browser viewers block local files.
 - Images that are big for their file size show up more slowly in some PDF viewers. Use
   `--max-image-px 3000` for a lighter file.
 

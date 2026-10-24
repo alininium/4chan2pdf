@@ -26,6 +26,7 @@ def test_thread_metadata():
         501944,
         507733,
         507740,
+        507745,
     ]
     op = t.op
     assert op.is_op and not t.posts[1].is_op
@@ -97,7 +98,7 @@ def test_backlinks():
     by_id = load().by_id()
     assert by_id[501780].replied_by == [501901, 501938, 507733, 507740]
     assert by_id[501901].replied_by == [501933]
-    assert by_id[501742].replied_by == [501933]
+    assert by_id[501742].replied_by == [501933, 507745]
     assert by_id[507740].replied_by == []
 
 
