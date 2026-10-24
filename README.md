@@ -42,7 +42,23 @@ pip install -e '.[dev]'
 
 ### Gentoo
 
-Install the system libraries, a font and (optionally) ffmpeg:
+The repository is also a small overlay with a live ebuild,
+`gentoo/app-text/4chan2pdf/4chan2pdf-9999.ebuild`, which builds the latest code from git:
+
+```sh
+git clone https://github.com/alininium/4chan2pdf.git ~/src/4chan2pdf
+printf '[4chan2pdf]\nlocation = %s\nauto-sync = no\n' "$HOME/src/4chan2pdf/gentoo" \
+    | sudo tee /etc/portage/repos.conf/4chan2pdf.conf
+echo 'app-text/4chan2pdf **' | sudo tee -a /etc/portage/package.accept_keywords/4chan2pdf
+sudo emerge --ask app-text/4chan2pdf
+```
+
+To update, run `git pull` in the clone and `sudo emerge --ask app-text/4chan2pdf` again. The
+ebuild doesn't require `media-video/ffmpeg` (video frames) or `dev-python/pillow[webp]`
+(WebP images); emerge prints a reminder about both after installing. You can also copy the
+ebuild into a local overlay you already have.
+
+Without the ebuild, install the system libraries, a font and (optionally) ffmpeg:
 
 ```sh
 sudo emerge --ask x11-libs/pango media-fonts/dejavu media-video/ffmpeg

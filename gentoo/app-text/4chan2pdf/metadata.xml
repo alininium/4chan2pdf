@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<longdescription>
+		Saves imageboard threads (4chan, static 4chan mirrors, saved pages, vichan)
+		as PDFs with full-resolution images and clickable links between posts.
+		Several threads can be combined into one PDF with a table of contents, and
+		downloads are kept between runs so more threads can be added later.
+	</longdescription>
+	<upstream>
+		<remote-id type="github">alininium/4chan2pdf</remote-id>
+		<bugs-to>https://github.com/alininium/4chan2pdf/issues</bugs-to>
+	</upstream>
+</pkgmetadata>
