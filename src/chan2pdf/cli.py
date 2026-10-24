@@ -43,6 +43,8 @@ def load_cookies(path: Path | None) -> dict[str, str] | None:
         return None
     cookies = {}
     for line in path.read_text().splitlines():
+        # Browsers export HttpOnly (often the session) cookies as "#HttpOnly_<domain>\t…".
+        line = line.removeprefix("#HttpOnly_")
         if line.startswith("#") or not line.strip():
             continue
         fields = line.split("\t")

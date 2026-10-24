@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -88,6 +90,16 @@ class Fetcher:
                 time.sleep(wait)
             self._last_request = time.monotonic()
 
+    @staticmethod
+    def _write_cache(path: Path, data: bytes) -> None:
+        # Unique temp name: worker threads can fetch the same URL (e.g. a shared spoiler
+        # placeholder) at once, and a shared temp file would make one replace() fail.
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".part-")
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+        os.replace(tmp, path)
+
     def get(self, url: str, use_cache: bool = True) -> bytes:
         path = local_path(url)
         if path is not None:
@@ -114,10 +126,7 @@ class Fetcher:
                 if resp.status_code == 200:
                     data = resp.content
                     if cached:
-                        cached.parent.mkdir(parents=True, exist_ok=True)
-                        tmp = cached.with_suffix(".tmp")
-                        tmp.write_bytes(data)
-                        tmp.replace(cached)
+                        self._write_cache(cached, data)
                     return data
                 status = resp.status_code
                 last_error = f"HTTP {status}"
